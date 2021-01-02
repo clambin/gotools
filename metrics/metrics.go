@@ -1,9 +1,8 @@
-// Metrics is a utility package to facilitate unit tests by allowing
-// the test to read back to the value set in a Prometheus metrics
+// Package metrics facilitate writing unit tests by allowing
+// the test to read back the value set in a Prometheus metrics
 package metrics
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,7 +15,7 @@ var (
 	metrics = make(map[string]interface{})
 )
 
-// Gauge returns a new Prometheus GaugeVec, created through promauto
+// NewGaugeVec returns a new Prometheus GaugeVec, created through promauto
 func NewGaugeVec(opts prometheus.GaugeOpts, labels []string) *prometheus.GaugeVec {
 	metric := promauto.NewGaugeVec(opts, labels)
 	metrics[opts.Name] = metric
@@ -24,7 +23,7 @@ func NewGaugeVec(opts prometheus.GaugeOpts, labels []string) *prometheus.GaugeVe
 	return metric
 }
 
-// Gauge returns a new Prometheus Gauge, created through promauto
+// NewGauge returns a new Prometheus Gauge, created through promauto
 func NewGauge(opts prometheus.GaugeOpts) prometheus.Gauge {
 	metric := promauto.NewGauge(opts)
 	metrics[opts.Name] = metric
@@ -48,8 +47,8 @@ func LoadValue(metricName string, labels ...string) (float64, error) {
 			_ = gaugevec.WithLabelValues(labels...).Write(&m)
 			return m.Gauge.GetValue(), nil
 		default:
-			return 0, errors.New(fmt.Sprintf("invalid type for metric %s: %v", metricName, metricType))
+			return 0, fmt.Errorf("invalid type for metric %s: %v", metricName, metricType)
 		}
 	}
-	return 0, errors.New("could not find " + metricName)
+	return 0, fmt.Errorf("could not find %s", metricName)
 }
