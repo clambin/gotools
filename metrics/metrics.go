@@ -1,4 +1,4 @@
-// Package metrics facilitate writing unit tests by allowing
+// Package metrics facilitates writing unit tests by allowing
 // the test to read back the value set in a Prometheus metrics
 package metrics
 
@@ -15,6 +15,14 @@ var (
 	metrics = make(map[string]interface{})
 )
 
+// NewGauge returns a new Prometheus Gauge, created through promauto
+func NewGauge(opts prometheus.GaugeOpts) prometheus.Gauge {
+	metric := promauto.NewGauge(opts)
+	metrics[opts.Name] = metric
+
+	return metric
+}
+
 // NewGaugeVec returns a new Prometheus GaugeVec, created through promauto
 func NewGaugeVec(opts prometheus.GaugeOpts, labels []string) *prometheus.GaugeVec {
 	metric := promauto.NewGaugeVec(opts, labels)
@@ -23,9 +31,17 @@ func NewGaugeVec(opts prometheus.GaugeOpts, labels []string) *prometheus.GaugeVe
 	return metric
 }
 
-// NewGauge returns a new Prometheus Gauge, created through promauto
-func NewGauge(opts prometheus.GaugeOpts) prometheus.Gauge {
-	metric := promauto.NewGauge(opts)
+// NewCounter returns a new Prometheus Counter, created through promauto
+func NewCounter(opts prometheus.CounterOpts) prometheus.Counter {
+	metric := promauto.NewCounter(opts)
+	metrics[opts.Name] = metric
+
+	return metric
+}
+
+// NewCounterVec returns a new Prometheus CounterVec, created through promauto
+func NewCounterVec(opts prometheus.CounterOpts, labels []string) *prometheus.CounterVec {
+	metric := promauto.NewCounterVec(opts, labels)
 	metrics[opts.Name] = metric
 
 	return metric
@@ -36,7 +52,7 @@ func LoadValue(metricName string, labels ...string) (float64, error) {
 	log.Debugf("%s(%s)", metricName, labels)
 	if metric, ok := metrics[metricName]; ok {
 		var m = dto.Metric{}
-		switch metricType := metric.(type) {
+		switch metric.(type) {
 		case prometheus.Gauge:
 			gauge := metric.(prometheus.Gauge)
 			_ = gauge.Write(&m)
@@ -46,8 +62,15 @@ func LoadValue(metricName string, labels ...string) (float64, error) {
 			log.Debug(gaugevec)
 			_ = gaugevec.WithLabelValues(labels...).Write(&m)
 			return m.Gauge.GetValue(), nil
-		default:
-			return 0, fmt.Errorf("invalid type for metric %s: %v", metricName, metricType)
+		case prometheus.Counter:
+			gauge := metric.(prometheus.Counter)
+			_ = gauge.Write(&m)
+			return m.Counter.GetValue(), nil
+		case *prometheus.CounterVec:
+			countervec := metric.(*prometheus.CounterVec)
+			log.Debug(countervec)
+			_ = countervec.WithLabelValues(labels...).Write(&m)
+			return m.Counter.GetValue(), nil
 		}
 	}
 	return 0, fmt.Errorf("could not find %s", metricName)
