@@ -4,11 +4,9 @@ package metrics
 
 import (
 	"fmt"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	dto "github.com/prometheus/client_model/go"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -49,7 +47,6 @@ func NewCounterVec(opts prometheus.CounterOpts, labels []string) *prometheus.Cou
 
 // LoadValue gets the last value reported so unit tests can verify the correct value was reported
 func LoadValue(metricName string, labels ...string) (float64, error) {
-	log.Debugf("%s(%s)", metricName, labels)
 	if metric, ok := metrics[metricName]; ok {
 		var m = dto.Metric{}
 		switch metric.(type) {
@@ -59,7 +56,6 @@ func LoadValue(metricName string, labels ...string) (float64, error) {
 			return m.Gauge.GetValue(), nil
 		case *prometheus.GaugeVec:
 			gaugevec := metric.(*prometheus.GaugeVec)
-			log.Debug(gaugevec)
 			_ = gaugevec.WithLabelValues(labels...).Write(&m)
 			return m.Gauge.GetValue(), nil
 		case prometheus.Counter:
@@ -68,7 +64,6 @@ func LoadValue(metricName string, labels ...string) (float64, error) {
 			return m.Counter.GetValue(), nil
 		case *prometheus.CounterVec:
 			countervec := metric.(*prometheus.CounterVec)
-			log.Debug(countervec)
 			_ = countervec.WithLabelValues(labels...).Write(&m)
 			return m.Counter.GetValue(), nil
 		}
